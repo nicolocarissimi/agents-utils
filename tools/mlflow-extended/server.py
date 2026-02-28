@@ -199,5 +199,10 @@ def download_artifact(
     return _client(tracking_uri).download_artifacts(run_id, path, dst_path)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for the CLI command."""
     mcp.run(transport="stdio", show_banner=False)
+
+
+if __name__ == "__main__":
+    main()
