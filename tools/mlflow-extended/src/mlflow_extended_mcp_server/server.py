@@ -9,6 +9,12 @@ from mlflow.entities import ViewType
 
 DEFAULT_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
+_VIEW_TYPE_MAPPING = {
+    "ACTIVE_ONLY": ViewType.ACTIVE_ONLY,
+    "DELETED_ONLY": ViewType.DELETED_ONLY,
+    "ALL": ViewType.ALL,
+}
+
 mcp = FastMCP(
     name="MLflow Runs",
     instructions="Tools for querying MLflow experiments, runs, metrics, and artifacts. "
@@ -29,17 +35,12 @@ def _map_view_type(view_type_str: str) -> int:
     Raises:
         ValueError: If the view_type_str is not valid.
     """
-    mapping = {
-        "ACTIVE_ONLY": ViewType.ACTIVE_ONLY,
-        "DELETED_ONLY": ViewType.DELETED_ONLY,
-        "ALL": ViewType.ALL,
-    }
-    if view_type_str not in mapping:
+    if view_type_str not in _VIEW_TYPE_MAPPING:
         raise ValueError(
             f"Invalid view_type: {view_type_str}. Must be one of: "
-            f"{', '.join(mapping.keys())}"
+            f"{', '.join(_VIEW_TYPE_MAPPING.keys())}"
         )
-    return mapping[view_type_str]
+    return _VIEW_TYPE_MAPPING[view_type_str]
 
 
 def _client(tracking_uri: str | None = None) -> MlflowClient:
