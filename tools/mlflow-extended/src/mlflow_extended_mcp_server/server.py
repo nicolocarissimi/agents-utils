@@ -2,12 +2,20 @@
 """Standalone MLflow MCP server for querying runs, metrics, and artifacts."""
 
 import os
-from typing import Optional
+from typing import Literal, Optional
 
 from fastmcp import FastMCP
 from mlflow import MlflowClient
+from mlflow.entities import ViewType
 
 DEFAULT_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+
+# Mapping for ViewType strings to MLflow ViewType enum values
+VIEW_TYPE_MAP = {
+    "ACTIVE_ONLY": ViewType.ACTIVE_ONLY,
+    "DELETED_ONLY": ViewType.DELETED_ONLY,
+    "ALL": ViewType.ALL,
+}
 
 mcp = FastMCP(
     name="MLflow Runs",
@@ -26,7 +34,7 @@ def search_experiments(
     filter_string: Optional[str] = None,
     max_results: int = 100,
     order_by: Optional[list[str]] = None,
-    view_type: int = 1,
+    view_type: Literal["ACTIVE_ONLY", "DELETED_ONLY", "ALL"] = "ACTIVE_ONLY",
     tracking_uri: Optional[str] = None,
 ) -> list[dict]:
     """Search MLflow experiments.
@@ -35,11 +43,11 @@ def search_experiments(
         filter_string: Filter expression, e.g. "name = 'my_experiment'" or "tags.team = 'nlp'".
         max_results: Maximum number of experiments to return.
         order_by: List of columns to order by, e.g. ["name ASC", "last_update_time DESC"].
-        view_type: 1=ACTIVE_ONLY (default), 2=DELETED_ONLY, 3=ALL.
+        view_type: View type for experiments - "ACTIVE_ONLY" (default), "DELETED_ONLY", or "ALL".
         tracking_uri: MLflow tracking server URI. Omit to use the default.
     """
     experiments = _client(tracking_uri).search_experiments(
-        view_type=view_type,
+        view_type=VIEW_TYPE_MAP[view_type],
         max_results=max_results,
         filter_string=filter_string,
         order_by=order_by,
@@ -61,7 +69,7 @@ def search_runs(
     filter_string: str = "",
     max_results: int = 100,
     order_by: Optional[list[str]] = None,
-    run_view_type: int = 1,
+    run_view_type: Literal["ACTIVE_ONLY", "DELETED_ONLY", "ALL"] = "ACTIVE_ONLY",
     page_token: Optional[str] = None,
     tracking_uri: Optional[str] = None,
 ) -> dict:
@@ -72,14 +80,14 @@ def search_runs(
         filter_string: Filter expression, e.g. "metrics.rmse < 0.5 AND params.lr = '0.01'".
         max_results: Maximum number of runs to return.
         order_by: List of columns to order by, e.g. ["metrics.rmse DESC", "start_time ASC"].
-        run_view_type: 1=ACTIVE_ONLY (default), 2=DELETED_ONLY, 3=ALL.
+        run_view_type: View type for runs - "ACTIVE_ONLY" (default), "DELETED_ONLY", or "ALL".
         page_token: Pagination token from a previous search result.
         tracking_uri: MLflow tracking server URI. Omit to use the default.
     """
     runs = _client(tracking_uri).search_runs(
         experiment_ids=experiment_ids,
         filter_string=filter_string,
-        run_view_type=run_view_type,
+        run_view_type=VIEW_TYPE_MAP[run_view_type],
         max_results=max_results,
         order_by=order_by,
         page_token=page_token,
