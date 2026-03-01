@@ -2,18 +2,19 @@
 """Standalone MLflow MCP server for querying runs, metrics, and artifacts."""
 
 import os
-from typing import Optional
+from typing import Literal, Optional
 
 from fastmcp import FastMCP
 from mlflow import MlflowClient
+from mlflow.entities import ViewType
 
 DEFAULT_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
-# Mapping from user-friendly strings to MLflow ViewType integer values
+# Mapping for ViewType strings to MLflow ViewType enum values
 VIEW_TYPE_MAP = {
-    "ACTIVE_ONLY": 1,
-    "DELETED_ONLY": 2,
-    "ALL": 3,
+    "ACTIVE_ONLY": ViewType.ACTIVE_ONLY,
+    "DELETED_ONLY": ViewType.DELETED_ONLY,
+    "ALL": ViewType.ALL,
 }
 
 mcp = FastMCP(
@@ -33,7 +34,7 @@ def search_experiments(
     filter_string: Optional[str] = None,
     max_results: int = 100,
     order_by: Optional[list[str]] = None,
-    view_type: str = "ACTIVE_ONLY",
+    view_type: Literal["ACTIVE_ONLY", "DELETED_ONLY", "ALL"] = "ACTIVE_ONLY",
     tracking_uri: Optional[str] = None,
 ) -> list[dict]:
     """Search MLflow experiments.
@@ -42,16 +43,9 @@ def search_experiments(
         filter_string: Filter expression, e.g. "name = 'my_experiment'" or "tags.team = 'nlp'".
         max_results: Maximum number of experiments to return.
         order_by: List of columns to order by, e.g. ["name ASC", "last_update_time DESC"].
-        view_type: Type of experiments to return. Options: "ACTIVE_ONLY" (default), 
-            "DELETED_ONLY", "ALL".
+        view_type: View type for experiments - "ACTIVE_ONLY" (default), "DELETED_ONLY", or "ALL".
         tracking_uri: MLflow tracking server URI. Omit to use the default.
     """
-    if view_type not in VIEW_TYPE_MAP:
-        raise ValueError(
-            f"Invalid view_type '{view_type}'. "
-            f"Must be one of: {', '.join(VIEW_TYPE_MAP.keys())}"
-        )
-
     experiments = _client(tracking_uri).search_experiments(
         view_type=VIEW_TYPE_MAP[view_type],
         max_results=max_results,
@@ -75,7 +69,7 @@ def search_runs(
     filter_string: str = "",
     max_results: int = 100,
     order_by: Optional[list[str]] = None,
-    run_view_type: str = "ACTIVE_ONLY",
+    run_view_type: Literal["ACTIVE_ONLY", "DELETED_ONLY", "ALL"] = "ACTIVE_ONLY",
     page_token: Optional[str] = None,
     tracking_uri: Optional[str] = None,
 ) -> dict:
@@ -86,17 +80,10 @@ def search_runs(
         filter_string: Filter expression, e.g. "metrics.rmse < 0.5 AND params.lr = '0.01'".
         max_results: Maximum number of runs to return.
         order_by: List of columns to order by, e.g. ["metrics.rmse DESC", "start_time ASC"].
-        run_view_type: Type of runs to return. Options: "ACTIVE_ONLY" (default), 
-            "DELETED_ONLY", "ALL".
+        run_view_type: View type for runs - "ACTIVE_ONLY" (default), "DELETED_ONLY", or "ALL".
         page_token: Pagination token from a previous search result.
         tracking_uri: MLflow tracking server URI. Omit to use the default.
     """
-    if run_view_type not in VIEW_TYPE_MAP:
-        raise ValueError(
-            f"Invalid run_view_type '{run_view_type}'. "
-            f"Must be one of: {', '.join(VIEW_TYPE_MAP.keys())}"
-        )
-
     runs = _client(tracking_uri).search_runs(
         experiment_ids=experiment_ids,
         filter_string=filter_string,
