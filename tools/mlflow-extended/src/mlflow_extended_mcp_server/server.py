@@ -2,12 +2,18 @@
 """Standalone MLflow MCP server for querying runs, metrics, and artifacts."""
 
 import os
-from typing import Optional
 
 from fastmcp import FastMCP
 from mlflow import MlflowClient
+from mlflow.entities import ViewType
 
 DEFAULT_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+
+_VIEW_TYPE_MAPPING = {
+    "ACTIVE_ONLY": ViewType.ACTIVE_ONLY,
+    "DELETED_ONLY": ViewType.DELETED_ONLY,
+    "ALL": ViewType.ALL,
+}
 
 mcp = FastMCP(
     name="MLflow Runs",
@@ -17,17 +23,37 @@ mcp = FastMCP(
 )
 
 
-def _client(tracking_uri: Optional[str] = None) -> MlflowClient:
+def _map_view_type(view_type_str: str) -> int:
+    """Map a view type string to the corresponding ViewType enum value.
+
+    Args:
+        view_type_str: One of "ACTIVE_ONLY", "DELETED_ONLY", or "ALL".
+
+    Returns:
+        The corresponding ViewType integer value.
+
+    Raises:
+        ValueError: If the view_type_str is not valid.
+    """
+    if view_type_str not in _VIEW_TYPE_MAPPING:
+        raise ValueError(
+            f"Invalid view_type: {view_type_str}. Must be one of: "
+            f"{', '.join(_VIEW_TYPE_MAPPING.keys())}"
+        )
+    return _VIEW_TYPE_MAPPING[view_type_str]
+
+
+def _client(tracking_uri: str | None = None) -> MlflowClient:
     return MlflowClient(tracking_uri=tracking_uri or DEFAULT_TRACKING_URI)
 
 
 @mcp.tool
 def search_experiments(
-    filter_string: Optional[str] = None,
+    filter_string: str | None = None,
     max_results: int = 100,
-    order_by: Optional[list[str]] = None,
-    view_type: int = 1,
-    tracking_uri: Optional[str] = None,
+    order_by: list[str] | None = None,
+    view_type: str = "ACTIVE_ONLY",
+    tracking_uri: str | None = None,
 ) -> list[dict]:
     """Search MLflow experiments.
 
@@ -35,11 +61,11 @@ def search_experiments(
         filter_string: Filter expression, e.g. "name = 'my_experiment'" or "tags.team = 'nlp'".
         max_results: Maximum number of experiments to return.
         order_by: List of columns to order by, e.g. ["name ASC", "last_update_time DESC"].
-        view_type: 1=ACTIVE_ONLY (default), 2=DELETED_ONLY, 3=ALL.
+        view_type: One of "ACTIVE_ONLY" (default), "DELETED_ONLY", or "ALL".
         tracking_uri: MLflow tracking server URI. Omit to use the default.
     """
     experiments = _client(tracking_uri).search_experiments(
-        view_type=view_type,
+        view_type=_map_view_type(view_type),
         max_results=max_results,
         filter_string=filter_string,
         order_by=order_by,
@@ -60,10 +86,10 @@ def search_runs(
     experiment_ids: list[str],
     filter_string: str = "",
     max_results: int = 100,
-    order_by: Optional[list[str]] = None,
-    run_view_type: int = 1,
-    page_token: Optional[str] = None,
-    tracking_uri: Optional[str] = None,
+    order_by: list[str] | None = None,
+    run_view_type: str = "ACTIVE_ONLY",
+    page_token: str | None = None,
+    tracking_uri: str | None = None,
 ) -> dict:
     """Search MLflow runs in one or more experiments.
 
@@ -72,14 +98,14 @@ def search_runs(
         filter_string: Filter expression, e.g. "metrics.rmse < 0.5 AND params.lr = '0.01'".
         max_results: Maximum number of runs to return.
         order_by: List of columns to order by, e.g. ["metrics.rmse DESC", "start_time ASC"].
-        run_view_type: 1=ACTIVE_ONLY (default), 2=DELETED_ONLY, 3=ALL.
+        run_view_type: One of "ACTIVE_ONLY" (default), "DELETED_ONLY", or "ALL".
         page_token: Pagination token from a previous search result.
         tracking_uri: MLflow tracking server URI. Omit to use the default.
     """
     runs = _client(tracking_uri).search_runs(
         experiment_ids=experiment_ids,
         filter_string=filter_string,
-        run_view_type=run_view_type,
+        run_view_type=_map_view_type(run_view_type),
         max_results=max_results,
         order_by=order_by,
         page_token=page_token,
@@ -109,7 +135,7 @@ def search_runs(
 @mcp.tool
 def get_run(
     run_id: str,
-    tracking_uri: Optional[str] = None,
+    tracking_uri: str | None = None,
 ) -> dict:
     """Get full details of a specific MLflow run.
 
@@ -137,7 +163,7 @@ def get_run(
 def get_metric_history(
     run_id: str,
     key: str,
-    tracking_uri: Optional[str] = None,
+    tracking_uri: str | None = None,
 ) -> list[dict]:
     """Get the full history of a metric across all steps for a run.
 
@@ -161,8 +187,8 @@ def get_metric_history(
 @mcp.tool
 def list_artifacts(
     run_id: str,
-    path: Optional[str] = None,
-    tracking_uri: Optional[str] = None,
+    path: str | None = None,
+    tracking_uri: str | None = None,
 ) -> list[dict]:
     """List artifacts for a run.
 
@@ -182,8 +208,8 @@ def list_artifacts(
 def download_artifact(
     run_id: str,
     path: str,
-    dst_path: Optional[str] = None,
-    tracking_uri: Optional[str] = None,
+    dst_path: str | None = None,
+    tracking_uri: str | None = None,
 ) -> str:
     """Download an artifact from a run to local disk.
 
