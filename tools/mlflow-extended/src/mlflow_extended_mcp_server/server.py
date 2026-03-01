@@ -6,14 +6,15 @@ from typing import Literal, Optional
 
 from fastmcp import FastMCP
 from mlflow import MlflowClient
+from mlflow.entities import ViewType
 
 DEFAULT_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
 # Mapping for ViewType strings to MLflow ViewType enum values
 VIEW_TYPE_MAP = {
-    "ACTIVE_ONLY": 1,
-    "DELETED_ONLY": 2,
-    "ALL": 3,
+    "ACTIVE_ONLY": ViewType.ACTIVE_ONLY,
+    "DELETED_ONLY": ViewType.DELETED_ONLY,
+    "ALL": ViewType.ALL,
 }
 
 mcp = FastMCP(
