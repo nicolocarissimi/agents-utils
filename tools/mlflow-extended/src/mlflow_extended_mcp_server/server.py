@@ -51,7 +51,7 @@ def search_experiments(
             f"Invalid view_type '{view_type}'. "
             f"Must be one of: {', '.join(VIEW_TYPE_MAP.keys())}"
         )
-    
+
     experiments = _client(tracking_uri).search_experiments(
         view_type=VIEW_TYPE_MAP[view_type],
         max_results=max_results,
@@ -96,7 +96,7 @@ def search_runs(
             f"Invalid run_view_type '{run_view_type}'. "
             f"Must be one of: {', '.join(VIEW_TYPE_MAP.keys())}"
         )
-    
+
     runs = _client(tracking_uri).search_runs(
         experiment_ids=experiment_ids,
         filter_string=filter_string,
