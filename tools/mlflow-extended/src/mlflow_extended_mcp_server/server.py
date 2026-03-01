@@ -2,13 +2,13 @@
 """Standalone MLflow MCP server for querying runs, metrics, and artifacts."""
 
 import os
+
+from threading import Lock
 from typing import Literal, Optional
 
 from fastmcp import FastMCP
 from mlflow import MlflowClient
 from mlflow.entities import ViewType
-
-DEFAULT_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
 
 # Mapping for ViewType strings to MLflow ViewType enum values
 VIEW_TYPE_MAP = {
@@ -24,9 +24,35 @@ mcp = FastMCP(
     "if omitted, the default MLFLOW_TRACKING_URI from the environment is used.",
 )
 
+# Cache for MlflowClient instances keyed by tracking URI
+_client_cache: dict[str, MlflowClient] = {}
+_client_cache_lock = Lock()
+# Maximum number of cached clients to prevent unbounded growth
+_MAX_CACHE_SIZE = 10
+
 
 def _client(tracking_uri: Optional[str] = None) -> MlflowClient:
-    return MlflowClient(tracking_uri=tracking_uri or DEFAULT_TRACKING_URI)
+    """Get or create a cached MlflowClient for the given tracking URI.
+    
+    Args:
+        tracking_uri: MLflow tracking server URI. If None, uses MLFLOW_TRACKING_URI
+                     environment variable or defaults to "http://localhost:5000".
+    
+    Returns:
+        Cached or new MlflowClient instance.
+    """
+    # Lazy evaluation: resolve default URI at call time, not import time
+    uri = tracking_uri or os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    
+    # Thread-safe cache access
+    with _client_cache_lock:
+        if uri not in _client_cache:
+            # Evict oldest entry if cache is full (simple FIFO eviction)
+            if len(_client_cache) >= _MAX_CACHE_SIZE:
+                _client_cache.pop(next(iter(_client_cache)))
+            _client_cache[uri] = MlflowClient(tracking_uri=uri)
+        
+        return _client_cache[uri]
 
 
 @mcp.tool
