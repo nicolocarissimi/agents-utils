@@ -2,6 +2,7 @@
 """Standalone MLflow MCP server for querying runs, metrics, and artifacts."""
 
 import os
+from threading import Lock
 from typing import Optional
 
 from fastmcp import FastMCP
@@ -16,6 +17,9 @@ mcp = FastMCP(
 
 # Cache for MlflowClient instances keyed by tracking URI
 _client_cache: dict[str, MlflowClient] = {}
+_client_cache_lock = Lock()
+# Maximum number of cached clients to prevent unbounded growth
+_MAX_CACHE_SIZE = 10
 
 
 def _client(tracking_uri: Optional[str] = None) -> MlflowClient:
@@ -31,11 +35,15 @@ def _client(tracking_uri: Optional[str] = None) -> MlflowClient:
     # Lazy evaluation: resolve default URI at call time, not import time
     uri = tracking_uri or os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
     
-    # Return cached client if available
-    if uri not in _client_cache:
-        _client_cache[uri] = MlflowClient(tracking_uri=uri)
-    
-    return _client_cache[uri]
+    # Thread-safe cache access
+    with _client_cache_lock:
+        if uri not in _client_cache:
+            # Evict oldest entry if cache is full (simple FIFO eviction)
+            if len(_client_cache) >= _MAX_CACHE_SIZE:
+                _client_cache.pop(next(iter(_client_cache)))
+            _client_cache[uri] = MlflowClient(tracking_uri=uri)
+        
+        return _client_cache[uri]
 
 
 @mcp.tool
