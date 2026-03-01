@@ -22,6 +22,12 @@ uses the `MLFLOW_TRACKING_URI` environment variable (default: `http://localhost:
 pipx install mlflow-extended-mcp-server
 ```
 
+or from git
+
+```bash
+pipx install "mlflow-extended-mcp-server @ git+https://github.com/nicolocarissimi/agents-utils.git#subdirectory=tools/mlflow-extended"
+```
+
 ### uv
 
 ```bash
