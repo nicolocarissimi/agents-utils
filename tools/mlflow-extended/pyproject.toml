@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlflow-extended-mcp-server"
+version = "0.1.0"
+description = "MCP server for querying MLflow experiments, runs, metrics, and artifacts"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "fastmcp>=0.4.0",
+    "mlflow>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "vulture",
+    "pytest",
+]
+
+[project.scripts]
+mlflow-extended-mcp-server = "mlflow_extended_mcp_server.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "B", "C90", "PD", "NPY", "PERF", "UP", "I", "RUF"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+warn_unused_ignores = true
+show_error_codes = true
